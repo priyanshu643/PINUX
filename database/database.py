@@ -4,6 +4,8 @@ import json
 import time
 web_wurl = "XXX"
 web_turl = "XXX"
+esp_turl = "XXX"
+web_uurl = "XXX"
 r = requests.get(web_wurl)
 print(r.json())
 def weather_api(latitude, longitude):
@@ -14,17 +16,29 @@ def weather_api(latitude, longitude):
     print(w_data)
     weather_code = w_data['weather_code']
     temperature = w_data['temperature_2m']
-    print(f"Temperature: {w_data['temperature_2m']}")
-    print(f"Weather Code: {w_data['weather_code']}")
-    time.sleep(10 * 60)
+    print(f"Temperature: {temperature}")
+    print(f"Weather Code: {weather_code}")
+
+    return
+def tiem_check():
+    unpack_tiem = requests.get(web_turl)
+    print(unpack_tiem.json())
+    for tiem_id, tiem_data in unpack_tiem.json().items():
+        print(tiem_id, tiem_data)
+        if tiem_data['timer_minutes'] > 0:
+            time.sleep(tiem_data['timer_minutes'] * 60)
+            payload = {f'{tiem_id}': 'OFF', }
+            requests.post(esp_turl, json=payload)
+            web_payload = {f'{tiem_id}': {'state': 'OFF', 'timer_minutes': 0}}
+            requests.post(web_uurl, json=web_payload)
+    time.sleep(1)
     return
 
 for api_id, data in r.json().items():
-
     while True:
-        try:
+        current_time = (int(time.time()))
+        print(current_time)
+        if current_time % 600 == 0:
             weather_api(data['latitude'], data['longitude'])
-
-        except:
-            print("API Error")
-            time.sleep(5)
+        else:
+            tiem_check()
