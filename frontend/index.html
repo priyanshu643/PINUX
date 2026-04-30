@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PINUX | Command Center</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        :root {
+            --bg-color: #000000;
+            --surface-color: rgba(255, 255, 255, 0.04);
+            --surface-border: rgba(255, 255, 255, 0.08);
+            --text-primary: #f5f5f7;
+            --text-secondary: #86868b;
+            --apple-green: #34c759;
+            --apple-blue: #0071e3;
+            --apple-red: #ff3b30;
+            --easing: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* --- Modals (Location & ReadMe) --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s var(--easing), visibility 0.5s;
+        }
+
+        .modal-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .modal-card {
+            background: rgba(30, 30, 32, 0.85);
+            border: 1px solid var(--surface-border);
+            border-radius: 24px;
+            padding: 40px;
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+            transform: translateY(20px) scale(0.95);
+            transition: transform 0.5s var(--easing);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-overlay:not(.hidden) .modal-card {
+            transform: translateY(0) scale(1);
+        }
+
+        .modal-icon { font-size: 3rem; margin-bottom: 20px; }
+        .modal-title { font-size: 1.8rem; font-weight: 700; margin-bottom: 10px; }
+        .modal-text { color: var(--text-secondary); font-size: 1rem; margin-bottom: 30px; line-height: 1.6; }
+
+        .modal-btn {
+            background: var(--apple-blue); color: white; border: none; border-radius: 12px;
+            padding: 14px 24px; font-size: 1rem; font-weight: 600; width: 100%;
+            cursor: pointer; transition: background 0.3s, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .modal-btn:hover { background: #0077ed; transform: scale(1.03); }
+        .modal-btn:active { transform: scale(0.97); }
+
+        .close-btn { background: rgba(255,255,255,0.1); margin-top: 15px; }
+        .close-btn:hover { background: rgba(255,255,255,0.15); }
+
+        /* --- Main UI --- */
+        .hero {
+            height: 50vh; display: flex; flex-direction: column; justify-content: center;
+            align-items: center; text-align: center;
+        }
+
+        .hero h1 {
+            font-size: clamp(3rem, 8vw, 6rem); font-weight: 700; letter-spacing: -0.05em;
+            background: linear-gradient(270deg, #fff, #5a5a60, #fff);
+            background-size: 200% 200%;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            animation: gradientShift 8s ease infinite;
+        }
+
+        .hero p { color: var(--text-secondary); font-size: 1.2rem; margin-top: 10px; font-weight: 300; letter-spacing: 0.1em; }
+
+        @keyframes gradientShift { 
+            0% { background-position: 0% 50%; } 
+            50% { background-position: 100% 50%; } 
+            100% { background-position: 0% 50%; } 
+        }
+
+        .dashboard {
+            max-width: 1200px; margin: 0 auto; padding: 0 20px 60px 20px;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;
+        }
+
+        .card {
+            background: var(--surface-color); border: 1px solid var(--surface-border);
+            border-radius: 24px; padding: 32px; display: flex; flex-direction: column;
+            transition: transform 0.4s var(--easing), background 0.4s var(--easing), box-shadow 0.4s var(--easing);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.06);
+            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+        }
+
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .device-name { font-size: 1.25rem; font-weight: 600; }
+
+        /* Switches */
+        .switch { position: relative; display: inline-block; width: 52px; height: 32px; flex-shrink: 0; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(255, 255, 255, 0.16); transition: .4s var(--easing); border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 28px; width: 28px; left: 2px; bottom: 2px;
+            background-color: white; transition: .4s cubic-bezier(0.34, 1.56, 0.64, 1); border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        input:checked + .slider { background-color: var(--apple-green); }
+        input:checked + .slider:before { transform: translateX(20px); }
+        .switch:active .slider:before { width: 34px; } 
+        input:checked:active + .slider:before { transform: translateX(14px); }
+
+        /* Timers */
+        .timer-container { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.5s var(--easing); }
+        .timer-container.active { grid-template-rows: 1fr; }
+        .timer-content {
+            overflow: hidden; display: flex; gap: 12px; margin-top: 0; opacity: 0;
+            transition: opacity 0.3s ease, margin-top 0.3s ease; width: 100%;
+        }
+        .timer-container.active .timer-content { opacity: 1; margin-top: 20px; overflow: visible; }
+        
+        input[type="number"] {
+            flex: 1; width: 100%; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--surface-border);
+            border-radius: 12px; color: white; padding: 12px 16px; font-size: 1rem; outline: none;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        input[type="number"]:focus { border-color: var(--apple-blue); box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.2); }
+
+        input[type="number"]::-webkit-inner-spin-button, 
+        input[type="number"]::-webkit-outer-spin-button {
+            opacity: 0.3; filter: invert(1); cursor: pointer; transition: opacity 0.2s, transform 0.2s;
+        }
+        input[type="number"]::-webkit-inner-spin-button:hover { opacity: 1; transform: scale(1.2); }
+
+        button.set-btn {
+            background: var(--apple-blue); color: white; border: none; border-radius: 12px;
+            padding: 12px 20px; font-weight: 600; cursor: pointer; flex-shrink: 0;
+            transition: background 0.2s, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        button.set-btn:hover { background: #0077ed; transform: scale(1.05); }
+        button.set-btn:active { transform: scale(0.95); }
+
+        .status-text { font-size: 0.85rem; color: var(--text-secondary); margin-top: 16px; min-height: 1rem; transition: color 0.3s; }
+
+        /* Cancel Timer Button */
+        .cancel-btn {
+            background: rgba(255, 59, 48, 0.15);
+            color: var(--apple-red);
+            border: 1px solid rgba(255, 59, 48, 0.3);
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .cancel-btn:hover {
+            background: rgba(255, 59, 48, 0.25);
+            transform: scale(1.05);
+        }
+        .cancel-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Footer */
+        .footer { text-align: center; padding: 40px 20px; margin-top: 40px; border-top: 1px solid var(--surface-border); }
+        .footer a { color: var(--text-secondary); text-decoration: none; font-size: 0.9rem; transition: color 0.3s; cursor: pointer; }
+        .footer a:hover { color: var(--text-primary); }
+    </style>
+</head>
+<body>
+
+    <!-- ReadMe Modal (Page 2) -->
+    <div class="modal-overlay hidden" id="readmeModal">
+        <div class="modal-card" style="text-align: left;">
+            <div class="modal-icon" style="text-align: center;">⚡</div>
+            <h2 class="modal-title" style="text-align: center; margin-bottom: 20px;">About PINUX</h2>
+            <p class="modal-text">PINUX is an advanced, 7-channel asynchronous Smart Home System. It bridges high-level cloud architecture with bare-metal ESP32 hardware.</p>
+            <p class="modal-text">Built on a non-blocking Python backend, the system seamlessly handles concurrent database patching, environmental weather polling, and precision timer mechanics without interrupting execution flow.</p>
+            <br><hr style="border: 0; height: 1px; background: var(--surface-border); margin-bottom: 20px;">
+            <p style="color: var(--text-primary); font-weight: 600; text-align: center; font-size: 1.1rem;">Project made by Priyanshu Raj</p>
+            <button class="modal-btn close-btn" onclick="toggleReadme(false)">Close</button>
+        </div>
+    </div>
+
+    <!-- UI Core -->
+    <section class="hero">
+        <h1>PINUX</h1>
+        <p>Intelligence, wired in.</p>
+    </section>
+
+    <section class="dashboard" id="dashboard">
+        <!-- 7 Relays Generated by JS -->
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <a onclick="toggleReadme(true)">About PINUX Architecture</a>
+    </footer>
+
+    <script>
+        // --- ARCHITECTURE URLS ---
+        const LOC_URL = "https://hospital-management-syst-2aa93-default-rtdb.asia-southeast1.firebasedatabase.app/test_locations.json";
+        const DEVICES_URL = "https://hospital-management-syst-2aa93-default-rtdb.asia-southeast1.firebasedatabase.app/devices.json";
+        const WEB_PAYLOAD_URL = "https://hospital-management-syst-2aa93-default-rtdb.asia-southeast1.firebasedatabase.app/web_payload.json";
+
+        // INTERACTION LOCK: Prevents the UI from glitching if Python is slow to update Firebase
+        const interactionLocks = {};
+
+        // --- ReadMe Logic ---
+        function toggleReadme(show) {
+            const modal = document.getElementById('readmeModal');
+            if (show) modal.classList.remove('hidden');
+            else modal.classList.add('hidden');
+        }
+
+        // --- 2. GENERATE UI ---
+        const dashboard = document.getElementById('dashboard');
+        const relayMapping = [1, 2, 4, 5, 6, 7, 8]; // Backend relay 3 is skipped
+        
+        relayMapping.forEach((backendId, index) => {
+            const uiId = index + 1; // UI shows 1 to 7
+            dashboard.innerHTML += `
+                <div class="card" id="card_${backendId}">
+                    <div class="card-header">
+                        <div class="device-name">Relay ${uiId}</div>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle_${backendId}" onchange="handleToggle(${backendId})">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="timer-container" id="timer_container_${backendId}">
+                        <div class="timer-content">
+                            <!-- Inputmode numeric ensures number pad opens on mobile -->
+                            <input type="number" id="time_input_${backendId}" placeholder="Delay (min)" min="1" inputmode="numeric" pattern="[0-9]*">
+                            <button class="set-btn" onclick="setTimer(${backendId})">Set</button>
+                        </div>
+                    </div>
+                    <div class="status-text" id="status_${backendId}">Awaiting Command...</div>
+                </div>
+            `;
+        });
+
+        // --- 3. COMMUNICATION TO PYTHON ---
+        async function handleToggle(relayId) {
+            // LOCK THE LISTENER FOR 3 SECONDS
+            interactionLocks[relayId] = Date.now();
+
+            const isChecked = document.getElementById(`toggle_${relayId}`).checked;
+            const timerContainer = document.getElementById(`timer_container_${relayId}`);
+            const statusText = document.getElementById(`status_${relayId}`);
+
+            if (isChecked) {
+                timerContainer.classList.add('active');
+            } else {
+                timerContainer.classList.remove('active');
+                // Instantly clear the text box when toggled off
+                document.getElementById(`time_input_${relayId}`).value = "";
+            }
+
+            statusText.innerText = "Informing PINUX Engine...";
+
+            const payload = {
+                [`relay_${relayId}`]: {
+                    state: isChecked ? "ON" : "OFF",
+                    timer_minutes: 0,
+                    last_updated: new Date().toISOString()
+                }
+            };
+
+            try {
+                await fetch(DEVICES_URL, { method: 'PATCH', body: JSON.stringify(payload) });
+                await fetch(WEB_PAYLOAD_URL, { method: 'PATCH', body: JSON.stringify(payload) });
+                
+                statusText.innerText = isChecked ? "Relay ON (No Timer)" : "Relay OFF";
+                statusText.style.color = isChecked ? "var(--apple-green)" : "var(--text-secondary)";
+            } catch (e) {
+                statusText.innerText = "Sync Failed";
+                statusText.style.color = "var(--apple-red)";
+            }
+        }
+
+        async function setTimer(relayId) {
+            // LOCK THE LISTENER FOR 3 SECONDS
+            interactionLocks[relayId] = Date.now();
+
+            const timeValue = document.getElementById(`time_input_${relayId}`).value;
+            const statusText = document.getElementById(`status_${relayId}`);
+            const timerContainer = document.getElementById(`timer_container_${relayId}`);
+
+            if (!timeValue) return;
+
+            statusText.innerText = "Syncing PINUX Timers...";
+
+            const payload = {
+                [`relay_${relayId}`]: {
+                    state: "ON",
+                    timer_minutes: parseInt(timeValue),
+                    last_updated: new Date().toISOString()
+                }
+            };
+
+            try {
+                await fetch(DEVICES_URL, { method: 'PATCH', body: JSON.stringify(payload) });
+                await fetch(WEB_PAYLOAD_URL, { method: 'PATCH', body: JSON.stringify(payload) });
+                
+                // Clear any manual coloring applied earlier
+                statusText.style.color = "";
+                
+                // Add the cancel button inside the status text
+                statusText.innerHTML = `<button class="cancel-btn" onclick="cancelTimer(${relayId})">Cancel ${timeValue} min timer</button>`;
+                
+                // Auto-collapse the timer menu and clear the box
+                timerContainer.classList.remove('active');
+                document.getElementById(`time_input_${relayId}`).value = "";
+                document.getElementById(`toggle_${relayId}`).checked = true;
+                
+            } catch (e) {
+                statusText.innerText = "Sync Failed";
+                statusText.style.color = "var(--apple-red)";
+            }
+        }
+
+        async function cancelTimer(relayId) {
+            // LOCK THE LISTENER FOR 3 SECONDS
+            interactionLocks[relayId] = Date.now();
+            
+            const statusText = document.getElementById(`status_${relayId}`);
+            statusText.innerText = "Canceling Timer...";
+            statusText.style.color = "var(--text-secondary)";
+
+            const payload = {
+                [`relay_${relayId}`]: {
+                    state: "ON", // Keep the relay physically on, just stop the countdown
+                    timer_minutes: 0,
+                    last_updated: new Date().toISOString()
+                }
+            };
+
+            try {
+                await fetch(DEVICES_URL, { method: 'PATCH', body: JSON.stringify(payload) });
+                await fetch(WEB_PAYLOAD_URL, { method: 'PATCH', body: JSON.stringify(payload) });
+                
+                statusText.innerText = "Relay ON (Timer Canceled)";
+                statusText.style.color = "var(--apple-green)";
+                document.getElementById(`timer_container_${relayId}`).classList.add('active'); // Pop the timer menu back open
+            } catch (e) {
+                statusText.innerText = "Sync Failed";
+                statusText.style.color = "var(--apple-red)";
+            }
+        }
+
+        // --- 4. LISTENING TO PYTHON & OTHER USERS ---
+        setInterval(async () => {
+            try {
+                const response = await fetch(WEB_PAYLOAD_URL);
+                const data = await response.json();
+                
+                if (data) {
+                    relayMapping.forEach((backendId) => {
+                        // If the user interacted with this relay in the last 3 seconds, ignore the database
+                        if (interactionLocks[backendId] && (Date.now() - interactionLocks[backendId] < 3000)) {
+                            return;
+                        }
+
+                        const relayData = data[`relay_${backendId}`];
+                        if (relayData) {
+                            const toggle = document.getElementById(`toggle_${backendId}`);
+                            const status = document.getElementById(`status_${backendId}`);
+                            const timerContainer = document.getElementById(`timer_container_${backendId}`);
+                            
+                            const isDbOn = (relayData.state === "ON");
+                            
+                            // Only update if the UI is different from the Database
+                            if (toggle.checked !== isDbOn) {
+                                toggle.checked = isDbOn;
+                                
+                                if (isDbOn) {
+                                    timerContainer.classList.add('active');
+                                    status.innerText = "Relay ON (Synced)";
+                                    status.style.color = "var(--apple-green)";
+                                } else {
+                                    timerContainer.classList.remove('active');
+                                    document.getElementById(`time_input_${backendId}`).value = "";
+                                    status.innerText = "Relay OFF (Synced)";
+                                    status.style.color = "var(--text-secondary)";
+                                }
+                            }
+                        }
+                    });
+                }
+            } catch (e) {}
+        }, 1000); 
+    </script>
+</body>
+</html>
